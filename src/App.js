@@ -1,6 +1,11 @@
-import React, { Component } from 'react';
+import React, { useEffect } from 'react';
+import {connect } from 'react-redux';
 import { Switch, Route, Redirect } from 'react-router-dom';
 import { auth, handleUserProfile } from './firebase/utils';
+import { setCurrentUser } from './redux/User/user.actions';
+
+//hoc
+import WithAuth from './hoc/withAuth';
 
 //layouts 
 import MainLayout from './layouts/MainLayout';
@@ -11,74 +16,52 @@ import Homepage from './pages/Homepage';
 import Registration from './pages/Registration';
 import Login from './pages/Login';
 import Recovery from './pages/Recovery';
+import Dashboard from './pages/Dashboard';
 import './default.scss';
 
-//changed functional component to class component due to authentification // 
 
-const initialState = {
-  currentUser: null
-};
+const App = props => {
+const { setCurrentUser, currentUser } = props;
 
-class App extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      ...initialState
-    };
-  }
+//react hook//
+useEffect(() => {
 
-  //our Event listener for auth subscribtion//
-
-authListener = null;
-
-//lifecycle hook//
-
-componentDidMount() {
-this.authListener = auth.onAuthStateChanged(async userAuth => {
-  if (userAuth) {
-    const userRef = await handleUserProfile(userAuth);
-    userRef.onSnapshot(snapshot => {
-      this.setState({
-        currentUser: {
+  const authListener = auth.onAuthStateChanged(async userAuth => {
+    if (userAuth) {
+      const userRef = await handleUserProfile(userAuth);
+      userRef.onSnapshot(snapshot => {
+        //passing the information to redux store//
+        setCurrentUser({
           id: snapshot.id,
           ...snapshot.data()
-        }
+        });
       })
-    })
-  }
+    }
+  
+  setCurrentUser(userAuth);
+  });
 
-this.setState({
-...initialState
-});
-
-});
-}
-
-componentWillUnmount () {
-this.authListener();
-//this will unsubscribe//
-}
-
-
-  render () {
-const { currentUser } = this.state;
+  return () => {
+      authListener();
+  };
+}, []);
 
   return (
     <div className="App">
      <Switch>
      <Route exact path="/" render={() => (
-       <HomepageLayout currentUser={currentUser}>
+       <HomepageLayout>
          <Homepage />
        </HomepageLayout>
      )} />
-     <Route path="/registration" render={() => currentUser ? <Redirect to="/" /> : (
-       <MainLayout currentUser={currentUser}>
+     <Route path="/registration" render={() =>  (
+       <MainLayout>
          <Registration />
        </MainLayout>
      )} />
      <Route path="/login" 
-      render={() => currentUser ? <Redirect to="/" /> : (
-        <MainLayout currentUser={currentUser}>
+      render={() =>  (
+        <MainLayout>
           <Login />
         </MainLayout>
       )} />
@@ -87,11 +70,27 @@ const { currentUser } = this.state;
           <Recovery />
           </ MainLayout>
      )}  />
+     <Route path="/dashboard" render={() => (
+       <WithAuth>
+        <MainLayout>
+          <Dashboard />
+          </ MainLayout>
+          </WithAuth>
+     )}  />
      </ Switch>
       </div>
     
   );
 }
-}
 
-export default App;
+
+const mapStateToProps = ({ user }) => ({
+  currentUser: user.currentUser
+});
+
+const mapDispatchToProps = dispatch => ({
+  setCurrentUser: user => dispatch(setCurrentUser(user))
+});
+
+
+export default connect(mapStateToProps, mapDispatchToProps)(App); 
