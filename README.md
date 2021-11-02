@@ -9,5 +9,6 @@
 ###### npm install firestore-export-import
 ##### in case you face errors, check npm $firebase -V for the version, if V9, you need to add /compat/
 ##### npm i redux react-redux redux-logger 
+##### npm i redux-thunk
 
 
